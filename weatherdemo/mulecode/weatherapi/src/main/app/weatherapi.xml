@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+	<http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" basePath="/api" doc:name="HTTP Listener Configuration"/>
+	<http:request-config name="GeoClient_Config" host="api.openweathermap.org" port="80" doc:name="HTTP Request Configuration"/>
+	<flow name="getWeatherByCity">
+		<http:listener config-ref="HTTP_Listener_Configuration" path="/weather/{cityName}" allowedMethods="GET" doc:name="HTTP"/>
+		<set-variable variableName="cityName" value="#[message.inboundProperties['http.uri.params'].cityName]" doc:name="Set cityName"/>
+		<logger message="Weather request received for city: #[flowVars.cityName]" level="INFO" doc:name="Log Request"/>
+		<http:request config-ref="GeoClient_Config" path="/geo/1.0/direct" method="GET" doc:name="Get Geo Coordinates">
+			<http:request-builder>
+				<http:query-param paramName="q" value="#[flowVars.cityName]"/>
+				<http:query-param paramName="limit" value="1"/>
+				<http:query-param paramName="appid" value="${weather.api.key}"/>
+			</http:request-builder>
+		</http:request>
+		<choice doc:name="Check location results">
+			<when expression="#[payload.isEmpty()]">
+				<logger message="City not found: #[flowVars.cityName]" level="INFO" doc:name="Log Not Found"/>
+				<set-payload value="{'error': 'City not found'}" doc:name="Set Not Found Response"/>
+				<set-property propertyName="http.status" value="404" doc:name="Set Status Code"/>
+			</when>
+		</choice>
+		<set-variable variableName="latitude" value="#[payload[0].lat]" doc:name="Set latitude"/>
+		<set-variable variableName="longitude" value="#[payload[0].lon]" doc:name="Set longitude"/>
+		<http:request config-ref="GeoClient_Config" path="/data/2.5/weather" method="GET" doc:name="Get Weather Data">
+			<http:request-builder>
+				<http:query-param paramName="lat" value="#[flowVars.latitude]"/>
+				<http:query-param paramName="lon" value="#[flowVars.longitude]"/>
+				<http:query-param paramName="appid" value="${weather.api.key}"/>
+			</http:request-builder>
+		</http:request>
+	</flow>
+</mule>

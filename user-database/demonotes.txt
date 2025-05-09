@@ -1,0 +1,4 @@
+bal migrate-mule user-database/mule-proj/users-database-query.xml -o user-database/ballerina-out
+
+Prueba
+http://localhost:8081/demo/albums

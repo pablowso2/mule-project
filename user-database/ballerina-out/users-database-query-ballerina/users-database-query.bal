@@ -16,7 +16,7 @@ service /demo on config {
         self.ctx = {payload: (), inboundProperties: {response: new, request: new, uriParams: {}}};
     }
 
-    resource function get users(http:Request request) returns http:Response|error {
+    resource function get albums(http:Request request) returns http:Response|error {
         self.ctx.inboundProperties.request = request;
         return invokeEndPoint0(self.ctx);
     }
